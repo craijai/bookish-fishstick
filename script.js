@@ -1,3 +1,4 @@
+// ------------------- FIREBASE CONFIG -------------------
 const firebaseConfig = {
   apiKey: "AIzaSyAYlxQplECLz6gkrYF6cjQmXjGcmuJh1sk",
   authDomain: "harak-chat.firebaseapp.com",
@@ -8,14 +9,12 @@ const firebaseConfig = {
   appId: "1:716682667532:web:7a272b4b44a671eb65b029"
 };
 
+// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
-
-firebase.initializeApp(firebaseConfig);
-
 const auth = firebase.auth();
 const database = firebase.database();
 
-// Elements
+// ------------------- DOM ELEMENTS -------------------
 const authContainer = document.getElementById("auth-container");
 const chatContainer = document.getElementById("chat-container");
 const emailInput = document.getElementById("email");
@@ -30,7 +29,7 @@ const userInfo = document.getElementById("user-info");
 
 let currentUser;
 
-// Auth state
+// ------------------- AUTH STATE -------------------
 auth.onAuthStateChanged(user => {
   if (user) {
     currentUser = user;
@@ -41,54 +40,58 @@ auth.onAuthStateChanged(user => {
   } else {
     authContainer.classList.remove("hidden");
     chatContainer.classList.add("hidden");
+    chatBox.innerHTML = "";
   }
 });
 
-// Register
+// ------------------- REGISTER -------------------
 registerBtn.onclick = () => {
-  auth.createUserWithEmailAndPassword(
-    emailInput.value,
-    passwordInput.value
-  ).catch(err => alert(err.message));
+  const email = emailInput.value.trim();
+  const password = passwordInput.value.trim();
+  if (!email || !password) return alert("Enter email & password");
+
+  auth.createUserWithEmailAndPassword(email, password)
+    .then(() => { emailInput.value = ""; passwordInput.value = ""; })
+    .catch(err => alert(err.message));
 };
 
-// Login
+// ------------------- LOGIN -------------------
 loginBtn.onclick = () => {
-  auth.signInWithEmailAndPassword(
-    emailInput.value,
-    passwordInput.value
-  ).catch(err => {
-    if (err.code === "auth/user-not-found") {
-      alert("Account does not exist. Please register first.");
-    } else {
-      alert(err.message);
-    }
-  });
+  const email = emailInput.value.trim();
+  const password = passwordInput.value.trim();
+  if (!email || !password) return alert("Enter email & password");
+
+  auth.signInWithEmailAndPassword(email, password)
+    .catch(err => {
+      if (err.code === "auth/user-not-found") {
+        alert("Account not found. Please register first.");
+      } else {
+        alert(err.message);
+      }
+    });
 };
 
-// Logout
+// ------------------- LOGOUT -------------------
 logoutBtn.onclick = () => auth.signOut();
 
-// Send message
+// ------------------- SEND MESSAGE -------------------
 sendBtn.onclick = sendMessage;
-messageInput.addEventListener("keypress", e => {
-  if (e.key === "Enter") sendMessage();
-});
+messageInput.addEventListener("keypress", e => { if (e.key === "Enter") sendMessage(); });
 
 function sendMessage() {
-  if (!messageInput.value.trim()) return;
+  const text = messageInput.value.trim();
+  if (!text || !currentUser) return;
 
   database.ref("messages").push({
     uid: currentUser.uid,
     username: currentUser.email.split("@")[0],
-    text: messageInput.value,
+    text,
     timestamp: Date.now()
   });
-
   messageInput.value = "";
 }
 
-// Load messages
+// ------------------- LOAD MESSAGES -------------------
 function loadMessages() {
   database.ref("messages").off();
   database.ref("messages").on("child_added", snapshot => {
@@ -97,4 +100,6 @@ function loadMessages() {
     p.textContent = `${msg.username}: ${msg.text}`;
     if (msg.uid === currentUser.uid) p.classList.add("self");
     chatBox.appendChild(p);
-    chatBox.scrollTop = chatBox.scrollHeight
+    chatBox.scrollTop = chatBox.scrollHeight;
+  });
+}
