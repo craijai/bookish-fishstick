@@ -1,47 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ChatLand</title>
 
+  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+<!-- AUTH FORM -->
 <div id="auth-container" class="card">
   <h2>💬 ChatLand</h2>
-  <p>Create an account or log in</p>
-
+  <p>Create an account or login</p>
   <input type="email" id="email" placeholder="Email">
   <input type="password" id="password" placeholder="Password">
-
   <div class="btn-group">
     <button id="login-btn" class="btn">Login</button>
     <button id="register-btn" class="btn btn-primary">Register</button>
   </div>
 </div>
 
+<!-- CHAT INTERFACE -->
 <div id="chat-container" class="card hidden">
   <div id="chat-header">
     <span id="user-info"></span>
     <button id="logout-btn" class="btn btn-logout">Logout</button>
   </div>
-
   <div id="chat-box"></div>
-
   <div id="message-area">
     <input type="text" id="message-input" placeholder="Type a message...">
     <button id="send-btn" class="btn btn-primary">Send</button>
   </div>
 </div>
 
-<!-- ✅ CORRECT FIREBASE SCRIPTS -->
+<!-- FIREBASE COMPAT SDKS (CORRECT ORDER) -->
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
+<!-- APP SCRIPT -->
 <script src="script.js"></script>
 </body>
 </html>
