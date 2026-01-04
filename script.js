@@ -97,6 +97,4 @@ function loadMessages() {
     p.textContent = `${msg.username}: ${msg.text}`;
     if (msg.uid === currentUser.uid) p.classList.add("self");
     chatBox.appendChild(p);
-    chatBox.scrollTop = chatBox.scrollHeight;
-  });
-}
+    chatBox.scrollTop = chatBox.scrollHeight
