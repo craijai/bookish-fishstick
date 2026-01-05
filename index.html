@@ -2,269 +2,294 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ChatterBox</title>
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
-body { font-family:'Roboto', sans-serif; margin:0; background:#f0f4f8; display:flex; justify-content:center; align-items:flex-start; min-height:100vh; }
+body {
+  margin:0;
+  font-family: Arial, sans-serif;
+  background:#eef2f7;
+  display:flex;
+  justify-content:center;
+}
+
 .hidden { display:none; }
 
-/* CARD */
-.card { background:white; border-radius:15px; padding:20px; margin:10px; width:550px; box-shadow:0 8px 20px rgba(0,0,0,0.2); }
+.app {
+  width:900px;
+  height:95vh;
+  display:flex;
+  background:white;
+  border-radius:12px;
+  overflow:hidden;
+}
 
-/* INPUTS & BUTTONS */
-input, textarea, select { width:100%; padding:8px; margin:5px 0; border-radius:8px; border:1px solid #ccc; outline:none; font-size:16px; }
-textarea { resize: vertical; min-height:50px; }
-button { padding:8px 12px; border:none; border-radius:12px; cursor:pointer; margin:3px; font-size:15px; }
-.btn-primary { background:#ff6f61; color:white; }
-.btn-secondary { background:#6ab04c; color:white; }
-.btn-danger { background:#f44336; color:white; }
+/* SIDEBAR */
+.sidebar {
+  width:250px;
+  background:#f7f9fc;
+  padding:10px;
+  overflow-y:auto;
+}
+.sidebar h3 { margin:10px 0 5px; }
 
-/* CHAT CONTAINER */
-#chat-container { display:flex; flex-direction:column; height:750px; width:550px; }
-#group-list { background:#fff5e6; padding:10px; height:150px; overflow-y:auto; border-radius:10px; }
-.group-item { cursor:pointer; padding:5px; border-radius:6px; margin:3px 0; }
-.group-item:hover { background:#ffe6c2; }
-.group-item.active { background:#ffb580; }
+.item {
+  padding:8px;
+  margin:3px 0;
+  border-radius:6px;
+  cursor:pointer;
+}
+.item:hover { background:#dde6ff; }
+.active { background:#b8c9ff; }
 
-#chat-box { background:#e6f7ff; flex:1; padding:10px; overflow-y:auto; border-radius:10px; margin:10px 0; position:relative;}
-#chat-box p { margin:5px 0; padding:10px; border-radius:12px; max-width:75%; word-wrap:break-word; position:relative; }
-#chat-box p.self { background:#ffe6f0; margin-left:auto; }
-#chat-box p.other { background:#d9f7be; margin-right:auto; }
-#chat-box img { max-width:150px; display:block; margin-top:5px; border-radius:8px; }
+/* CHAT */
+.chat {
+  flex:1;
+  display:flex;
+  flex-direction:column;
+}
 
-/* MESSAGE AREA */
-#message-area { display:flex; gap:10px; align-items:flex-end; }
-#message-input { flex:1; padding:10px; border-radius:12px; border:1px solid #ccc; font-size:16px; min-height:50px; }
-#message-buttons { display:flex; gap:5px; flex-shrink:0; }
+#chat-box {
+  flex:1;
+  padding:10px;
+  overflow-y:auto;
+  background:#f0f4ff;
+}
 
-/* AVATARS & STATUS */
-.avatar { width:30px; height:30px; border-radius:50%; vertical-align:middle; margin-right:5px; }
-.online-dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:3px; background:green; }
-.typing-indicator { font-style:italic; color:#555; font-size:0.9em; margin:3px 0; }
+.msg {
+  max-width:70%;
+  margin:5px 0;
+  padding:8px;
+  border-radius:10px;
+}
+.self { background:#ffd6e8; margin-left:auto; }
+.other { background:#d7ffd9; }
+
+#message-area {
+  display:flex;
+  gap:8px;
+  padding:10px;
+}
+textarea {
+  flex:1;
+  resize:none;
+  padding:8px;
+  border-radius:8px;
+  border:1px solid #ccc;
+}
+button {
+  border:none;
+  border-radius:8px;
+  padding:8px 12px;
+  cursor:pointer;
+}
+.send { background:#4f6cff; color:white; }
+
+/* AUTH */
+#auth {
+  width:400px;
+  margin-top:40px;
+}
+input {
+  width:100%;
+  padding:8px;
+  margin:5px 0;
+}
 </style>
 </head>
+
 <body>
 
 <!-- AUTH -->
-<div id="auth-container" class="card">
-<h2>ChatterBox</h2>
-<input type="text" id="username" placeholder="Username">
-<input type="email" id="email" placeholder="Email">
-<input type="password" id="password" placeholder="Password">
-<label>Avatar: <input type="file" id="avatar-upload" accept="image/*"></label>
-<button id="register-btn" class="btn-primary">Register</button>
-<button id="login-btn" class="btn-secondary">Login</button>
+<div id="auth">
+  <h2>ChatterBox</h2>
+  <input id="username" placeholder="Username">
+  <input id="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+  <button id="register">Register</button>
+  <button id="login">Login</button>
 </div>
 
-<!-- CHAT -->
-<div id="chat-container" class="hidden card">
-<div id="group-list" class="card">
-<h3>Groups</h3>
-<div id="groups"></div>
-<input type="text" id="new-group-name" placeholder="New group name">
-<button id="create-group-btn" class="btn-primary">Create Group</button>
-</div>
+<!-- APP -->
+<div class="app hidden" id="app">
 
-<div id="chat-box"></div>
-<div id="typing-indicators" class="typing-indicator"></div>
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <h3>Groups</h3>
+    <div id="groups"></div>
+    <input id="newGroup" placeholder="New group">
+    <button id="createGroup">Create</button>
 
-<!-- MESSAGE AREA -->
-<div id="message-area">
-<textarea id="message-input" placeholder="Type a message..."></textarea>
-<div id="message-buttons">
-  <button id="emoji-btn" class="btn-secondary">😀</button>
-  <label class="btn-secondary">
-    📎
-    <input type="file" id="message-file" style="display:none">
-  </label>
-  <button id="send-btn" class="btn-primary">Send</button>
-</div>
-</div>
+    <h3>DMs</h3>
+    <div id="dms"></div>
 
-<div>
-<button id="logout-btn" class="btn-danger">Logout</button>
+    <button id="logout">Logout</button>
+  </div>
+
+  <!-- CHAT -->
+  <div class="chat">
+    <div id="chat-box"></div>
+
+    <div id="message-area">
+      <textarea id="message" rows="2" placeholder="Type..."></textarea>
+      <button class="send" id="send">Send</button>
+    </div>
+  </div>
+
 </div>
 
 <!-- FIREBASE -->
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 
 <script>
-// ---------- FIREBASE CONFIG ----------
-const firebaseConfig = {
+/* 🔥 CONFIG */
+firebase.initializeApp({
   apiKey: "AIzaSyBJE5z3a6-_2gxonPCmXLgMhlctBkt-wiE",
   authDomain: "jbchat-1fe10.firebaseapp.com",
-  projectId: "jbchat-1fe10",
-  storageBucket: "jbchat-1fe10.firebasestorage.app",
-  messagingSenderId: "217576491356",
-  appId: "1:217576491356:web:d736d11730e83f24ee9999",
-  measurementId: "G-TM94MLYNGT"
-};
-firebase.initializeApp(firebaseConfig);
+  projectId: "jbchat-1fe10"
+});
+
 const auth = firebase.auth();
 const db = firebase.firestore();
-const storage = firebase.storage();
 
-// --- DOM Elements ---
-const authContainer = document.getElementById("auth-container");
-const chatContainer = document.getElementById("chat-container");
-const usernameInput = document.getElementById("username");
-const emailInput = document.getElementById("email");
-const passwordInput = document.getElementById("password");
-const avatarUpload = document.getElementById("avatar-upload");
-const registerBtn = document.getElementById("register-btn");
-const loginBtn = document.getElementById("login-btn");
-const logoutBtn = document.getElementById("logout-btn");
-const groupsDiv = document.getElementById("groups");
-const newGroupInput = document.getElementById("new-group-name");
-const chatBox = document.getElementById("chat-box");
-const messageInput = document.getElementById("message-input");
-const messageFile = document.getElementById("message-file");
-const sendBtn = document.getElementById("send-btn");
-const emojiBtn = document.getElementById("emoji-btn");
-const typingDiv = document.getElementById("typing-indicators");
-
+/* STATE */
 let currentUser;
-let currentGroupId = null;
+let currentChatId;
+let chatType; // "group" or "dm"
 
-// ---------- AUTH ----------
-registerBtn.onclick = async () => {
-  const email = emailInput.value.trim();
-  const password = passwordInput.value.trim();
-  const username = usernameInput.value.trim();
-  const avatarFile = avatarUpload.files[0];
-  if(!email||!password||!username) return alert("Fill all fields");
-  let avatarUrl="";
-  if(avatarFile){
-    const ref=storage.ref("avatars/"+Date.now()+"_"+avatarFile.name);
-    await ref.put(avatarFile);
-    avatarUrl=await ref.getDownloadURL();
-  }
-  auth.createUserWithEmailAndPassword(email,password).then(async cred=>{
-    await db.collection("users").doc(cred.user.uid).set({username,avatarUrl,online:true,lastSeen:Date.now()});
-  }).catch(err=>alert(err.message));
+/* AUTH */
+register.onclick = async () => {
+  const u = username.value, e = email.value, p = password.value;
+  const cred = await auth.createUserWithEmailAndPassword(e,p);
+  await db.collection("users").doc(cred.user.uid).set({username:u});
 };
 
-loginBtn.onclick=()=>{ 
-  const email=emailInput.value.trim(); 
-  const password=passwordInput.value.trim(); 
-  auth.signInWithEmailAndPassword(email,password).catch(err=>alert(err.message)); 
-};
+login.onclick = () => auth.signInWithEmailAndPassword(email.value,password.value);
 
-auth.onAuthStateChanged(async user=>{
-  if(user){ 
-    currentUser=user; 
-    authContainer.classList.add("hidden"); 
-    chatContainer.classList.remove("hidden"); 
-    await db.collection("users").doc(user.uid).update({online:true}); 
-    loadGroups(); 
-    window.addEventListener("beforeunload",()=>{ db.collection("users").doc(user.uid).update({online:false,lastSeen:Date.now()}); });
-  } else { 
-    currentUser=null; 
-    authContainer.classList.remove("hidden"); 
-    chatContainer.classList.add("hidden"); 
-    chatBox.innerHTML=""; groupsDiv.innerHTML=""; 
+auth.onAuthStateChanged(u=>{
+  if(u){
+    currentUser=u;
+    auth.style.display="none";
+    app.classList.remove("hidden");
+    loadGroups();
+    loadDMs();
   }
 });
 
-// ---------- GROUPS ----------
-document.getElementById("create-group-btn").onclick = async ()=>{
-  const name = newGroupInput.value.trim();
-  if(!name) return;
-  await db.collection("groups").add({name, members:[currentUser.uid]});
-  newGroupInput.value = "";
+/* GROUPS */
+createGroup.onclick = async ()=>{
+  if(!newGroup.value) return;
+  await db.collection("groups").add({
+    name:newGroup.value,
+    members:[currentUser.uid]
+  });
+  newGroup.value="";
 };
 
 function loadGroups(){
   db.collection("groups").onSnapshot(snap=>{
-    groupsDiv.innerHTML="";
-    snap.forEach(doc=>{
-      const data = doc.data();
-      const div = document.createElement("div");
-      div.textContent = data.name;
-      div.classList.add("group-item");
-      if(currentGroupId === doc.id) div.classList.add("active");
-      div.onclick = ()=>{ selectGroup(doc.id); };
-      groupsDiv.appendChild(div);
+    groups.innerHTML="";
+    snap.forEach(d=>{
+      const div=document.createElement("div");
+      div.textContent=d.data().name;
+      div.className="item";
+      div.onclick=()=>openGroup(d.id);
+      groups.appendChild(div);
     });
   });
 }
 
-function selectGroup(groupId){
-  currentGroupId = groupId;
-  Array.from(groupsDiv.children).forEach(d=>d.classList.remove("active"));
-  const selected = Array.from(groupsDiv.children).find(d=>d.textContent);
-  if(selected) selected.classList.add("active");
-  chatBox.innerHTML = "";
+async function openGroup(id){
+  chatType="group";
+  currentChatId=id;
+
+  // 🔥 AUTO JOIN
+  const ref=db.collection("groups").doc(id);
+  await ref.update({
+    members: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
+  });
+
   loadMessages();
 }
 
-// ---------- MESSAGES ----------
-sendBtn.onclick = async ()=>{
-  if(!currentUser) return alert("Login first");
-  if(!currentGroupId) return alert("Select a group first");
+/* DMS */
+function loadDMs(){
+  db.collection("users").onSnapshot(snap=>{
+    dms.innerHTML="";
+    snap.forEach(d=>{
+      if(d.id===currentUser.uid) return;
+      const div=document.createElement("div");
+      div.textContent=d.data().username;
+      div.className="item";
+      div.onclick=()=>openDM(d.id);
+      dms.appendChild(div);
+    });
+  });
+}
 
-  const text = messageInput.value.trim();
-  const file = messageFile.files[0];
-  if(!text && !file) return alert("Type a message or select a file");
+async function openDM(other){
+  chatType="dm";
 
-  let fileUrl = "";
-  if(file){
-    const ref = storage.ref(`messages/${Date.now()}_${file.name}`);
-    await ref.put(file);
-    fileUrl = await ref.getDownloadURL();
-  }
+  const q=await db.collection("dms")
+    .where("users","array-contains",currentUser.uid).get();
 
-  const userDoc = await db.collection("users").doc(currentUser.uid).get();
-  await db.collection("messages").doc(currentGroupId).collection("msgs").add({
-    senderId: currentUser.uid,
-    username: userDoc.data().username,
-    avatarUrl: userDoc.data().avatarUrl,
-    text,
-    fileUrl,
-    timestamp:Date.now()
+  let id=null;
+  q.forEach(d=>{
+    if(d.data().users.includes(other)) id=d.id;
   });
 
-  messageInput.value="";
-  messageFile.value="";
+  if(!id){
+    const ref=await db.collection("dms").add({
+      users:[currentUser.uid,other]
+    });
+    id=ref.id;
+  }
+
+  currentChatId=id;
+  loadMessages();
+}
+
+/* MESSAGES */
+send.onclick = async ()=>{
+  if(!message.value) return;
+
+  const userDoc = await db.collection("users").doc(currentUser.uid).get();
+  const ref = chatType==="group"
+    ? db.collection("messages").doc(currentChatId).collection("msgs")
+    : db.collection("dms").doc(currentChatId).collection("msgs");
+
+  await ref.add({
+    sender: currentUser.uid,
+    username: userDoc.data().username,
+    text: message.value,
+    time: Date.now()
+  });
+
+  message.value="";
 };
 
 function loadMessages(){
-  if(!currentGroupId) return;
-  db.collection("messages").doc(currentGroupId).collection("msgs")
-    .orderBy("timestamp")
-    .onSnapshot(snapshot=>{
-      chatBox.innerHTML="";
-      snapshot.forEach(doc=>{
-        const data = doc.data();
-        const p = document.createElement("p");
-        p.textContent = `${data.username}: ${data.text || ""}`;
-        p.className = (data.senderId === currentUser.uid) ? "self" : "other";
-        if(data.fileUrl){
-          const a = document.createElement("a");
-          a.href = data.fileUrl;
-          a.target="_blank";
-          a.textContent = "[File]";
-          p.appendChild(document.createElement("br"));
-          p.appendChild(a);
-        }
-        chatBox.appendChild(p);
-      });
-      chatBox.scrollTop = chatBox.scrollHeight;
+  chat-box.innerHTML="";
+  const ref = chatType==="group"
+    ? db.collection("messages").doc(currentChatId).collection("msgs")
+    : db.collection("dms").doc(currentChatId).collection("msgs");
+
+  ref.orderBy("time").onSnapshot(snap=>{
+    chat-box.innerHTML="";
+    snap.forEach(d=>{
+      const m=document.createElement("div");
+      m.className="msg "+(d.data().sender===currentUser.uid?"self":"other");
+      m.textContent=d.data().username+": "+d.data().text;
+      chat-box.appendChild(m);
     });
+    chat-box.scrollTop=chat-box.scrollHeight;
+  });
 }
 
-// ---------- EMOJIS ----------
-emojiBtn.onclick = ()=>{ messageInput.value += "😀"; };
-
-// ---------- LOGOUT ----------
-logoutBtn.onclick = ()=>{
-  if(currentUser) db.collection("users").doc(currentUser.uid).update({online:false,lastSeen:Date.now()});
-  auth.signOut();
-};
+logout.onclick=()=>auth.signOut();
 </script>
 </body>
 </html>
