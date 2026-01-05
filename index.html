@@ -38,9 +38,6 @@ button { padding:8px 12px; border:none; border-radius:12px; cursor:pointer; marg
 #message-input { flex:1; padding:10px; border-radius:12px; border:1px solid #ccc; font-size:16px; min-height:50px; }
 #message-buttons { display:flex; gap:5px; flex-shrink:0; }
 
-/* REACTIONS & POLLS */
-.poll { background:#fff0f5; padding:8px; border-radius:10px; margin:5px 0; }
-
 /* AVATARS & STATUS */
 .avatar { width:30px; height:30px; border-radius:50%; vertical-align:middle; margin-right:5px; }
 .online-dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:3px; background:green; }
@@ -86,7 +83,6 @@ button { padding:8px 12px; border:none; border-radius:12px; cursor:pointer; marg
 </div>
 
 <div>
-<button id="create-poll-btn" class="btn-secondary">Create Poll</button>
 <button id="logout-btn" class="btn-danger">Logout</button>
 </div>
 
@@ -129,12 +125,10 @@ const messageInput = document.getElementById("message-input");
 const messageFile = document.getElementById("message-file");
 const sendBtn = document.getElementById("send-btn");
 const emojiBtn = document.getElementById("emoji-btn");
-const createPollBtn = document.getElementById("create-poll-btn");
 const typingDiv = document.getElementById("typing-indicators");
 
 let currentUser;
 let currentGroupId = null;
-let typingTimeout;
 
 // ---------- AUTH ----------
 registerBtn.onclick = async () => {
@@ -177,59 +171,63 @@ auth.onAuthStateChanged(async user=>{
 });
 
 // ---------- GROUPS ----------
-createGroupBtn.onclick=async()=>{
-  const name=newGroupInput.value.trim();
+document.getElementById("create-group-btn").onclick = async ()=>{
+  const name = newGroupInput.value.trim();
   if(!name) return;
-  await db.collection("groups").add({name,members:[currentUser.uid]});
-  newGroupInput.value="";
+  await db.collection("groups").add({name, members:[currentUser.uid]});
+  newGroupInput.value = "";
 };
 
 function loadGroups(){
   db.collection("groups").onSnapshot(snap=>{
     groupsDiv.innerHTML="";
     snap.forEach(doc=>{
-      const data=doc.data();
-      const div=document.createElement("div");
-      div.textContent=data.name;
+      const data = doc.data();
+      const div = document.createElement("div");
+      div.textContent = data.name;
       div.classList.add("group-item");
-      if(currentGroupId===doc.id) div.classList.add("active");
-      div.onclick=()=>{ selectGroup(doc.id, data.name); };
+      if(currentGroupId === doc.id) div.classList.add("active");
+      div.onclick = ()=>{ selectGroup(doc.id); };
       groupsDiv.appendChild(div);
     });
   });
 }
 
-function selectGroup(groupId,name){
-  currentGroupId=groupId;
-  // highlight selected group
-  Array.from(groupsDiv.children).forEach(div=>div.classList.remove("active"));
-  const selected = Array.from(groupsDiv.children).find(d=>d.textContent===name);
+function selectGroup(groupId){
+  currentGroupId = groupId;
+  Array.from(groupsDiv.children).forEach(d=>d.classList.remove("active"));
+  const selected = Array.from(groupsDiv.children).find(d=>d.textContent);
   if(selected) selected.classList.add("active");
-  chatBox.innerHTML="";
+  chatBox.innerHTML = "";
   loadMessages();
 }
 
 // ---------- MESSAGES ----------
-sendBtn.onclick=async()=>{
-  if(!currentGroupId) return alert("Select a group");
-  const text=messageInput.value.trim();
-  if(!text && !messageFile.files[0]) return;
-  let fileUrl="";
-  if(messageFile.files[0]){
-    const file=messageFile.files[0];
-    const ref=storage.ref("messages/"+Date.now()+"_"+file.name);
+sendBtn.onclick = async ()=>{
+  if(!currentUser) return alert("Login first");
+  if(!currentGroupId) return alert("Select a group first");
+
+  const text = messageInput.value.trim();
+  const file = messageFile.files[0];
+  if(!text && !file) return alert("Type a message or select a file");
+
+  let fileUrl = "";
+  if(file){
+    const ref = storage.ref(`messages/${Date.now()}_${file.name}`);
     await ref.put(file);
-    fileUrl=await ref.getDownloadURL();
+    fileUrl = await ref.getDownloadURL();
   }
-  const userDoc=await db.collection("users").doc(currentUser.uid).get();
+
+  const userDoc = await db.collection("users").doc(currentUser.uid).get();
   await db.collection("messages").doc(currentGroupId).collection("msgs").add({
-    senderId:currentUser.uid,
-    username:userDoc.data().username,
-    avatarUrl:userDoc.data().avatarUrl,
+    senderId: currentUser.uid,
+    username: userDoc.data().username,
+    avatarUrl: userDoc.data().avatarUrl,
     text,
     fileUrl,
     timestamp:Date.now()
   });
+
   messageInput.value="";
   messageFile.value="";
 };
@@ -241,92 +239,29 @@ function loadMessages(){
     .onSnapshot(snapshot=>{
       chatBox.innerHTML="";
       snapshot.forEach(doc=>{
-        const data=doc.data();
-        const p=document.createElement("p");
-        p.textContent=`${data.username}: ${data.text||""}`;
-        p.className = (data.senderId===currentUser.uid)?"self":"other";
+        const data = doc.data();
+        const p = document.createElement("p");
+        p.textContent = `${data.username}: ${data.text || ""}`;
+        p.className = (data.senderId === currentUser.uid) ? "self" : "other";
         if(data.fileUrl){
-          const a=document.createElement("a");
-          a.href=data.fileUrl;
-          a.textContent="[File]";
+          const a = document.createElement("a");
+          a.href = data.fileUrl;
           a.target="_blank";
+          a.textContent = "[File]";
           p.appendChild(document.createElement("br"));
           p.appendChild(a);
         }
         chatBox.appendChild(p);
       });
-      chatBox.scrollTop=chatBox.scrollHeight;
+      chatBox.scrollTop = chatBox.scrollHeight;
     });
-}
-
-// ---------- TYPING INDICATORS ----------
-messageInput.addEventListener("input",()=>{
-  if(!currentGroupId || !currentUser) return;
-  db.collection("typing").doc(currentGroupId).collection("users").doc(currentUser.uid)
-    .set({isTyping:true,timestamp:Date.now()});
-  clearTimeout(typingTimeout);
-  typingTimeout=setTimeout(stopTyping,2000);
-});
-
-function stopTyping(){
-  if(!currentGroupId || !currentUser) return;
-  db.collection("typing").doc(currentGroupId).collection("users").doc(currentUser.uid)
-    .set({isTyping:false,timestamp:Date.now()});
-}
-
-function loadTypingIndicators(){
-  if(!currentGroupId) return;
-  db.collection("typing").doc(currentGroupId).collection("users").onSnapshot(snapshot=>{
-    let names=[];
-    snapshot.forEach(doc=>{
-      const data=doc.data();
-      if(data.isTyping && doc.id!==currentUser.uid) names.push(doc.id);
-    });
-    typingDiv.textContent=names.length>0?"Someone is typing...":"";
-  });
 }
 
 // ---------- EMOJIS ----------
-emojiBtn.onclick=()=>{ messageInput.value+="😀"; };
-
-// ---------- POLLS ----------
-createPollBtn.onclick=()=>{
-  if(!currentGroupId) return alert("Select group");
-  const question=prompt("Enter poll question:");
-  const options=prompt("Enter options separated by comma:").split(",");
-  if(!question||options.length<2) return alert("Need question and 2+ options");
-  db.collection("polls").doc(currentGroupId).collection("pollList").add({question,options,votes:{}});
-};
-
-function loadPolls(){
-  if(!currentGroupId) return;
-  db.collection("polls").doc(currentGroupId).collection("pollList")
-    .onSnapshot(snap=>{
-      snap.forEach(doc=>{
-        const poll=doc.data();
-        const div=document.createElement("div"); div.classList.add("poll");
-        div.innerHTML=`<b>${poll.question}</b>`;
-        poll.options.forEach((opt,i)=>{
-          const btn=document.createElement("button");
-          btn.textContent=opt;
-          btn.onclick=()=>votePoll(doc.id,i);
-          div.appendChild(btn);
-        });
-        chatBox.appendChild(div);
-      });
-    });
-}
-
-async function votePoll(pollId,optIndex){
-  const pollRef=db.collection("polls").doc(currentGroupId).collection("pollList").doc(pollId);
-  const pollDoc=await pollRef.get();
-  const votes=pollDoc.data().votes||{};
-  votes[currentUser.uid]=optIndex;
-  await pollRef.update({votes});
-}
+emojiBtn.onclick = ()=>{ messageInput.value += "😀"; };
 
 // ---------- LOGOUT ----------
-logoutBtn.onclick=()=>{
+logoutBtn.onclick = ()=>{
   if(currentUser) db.collection("users").doc(currentUser.uid).update({online:false,lastSeen:Date.now()});
   auth.signOut();
 };
