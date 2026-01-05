@@ -23,6 +23,10 @@ button { padding:8px 12px; border:none; border-radius:12px; cursor:pointer; marg
 /* CHAT CONTAINER */
 #chat-container { display:flex; flex-direction:column; height:750px; width:550px; }
 #group-list { background:#fff5e6; padding:10px; height:150px; overflow-y:auto; border-radius:10px; }
+.group-item { cursor:pointer; padding:5px; border-radius:6px; margin:3px 0; }
+.group-item:hover { background:#ffe6c2; }
+.group-item.active { background:#ffb580; }
+
 #chat-box { background:#e6f7ff; flex:1; padding:10px; overflow-y:auto; border-radius:10px; margin:10px 0; position:relative;}
 #chat-box p { margin:5px 0; padding:10px; border-radius:12px; max-width:75%; word-wrap:break-word; position:relative; }
 #chat-box p.self { background:#ffe6f0; margin-left:auto; }
@@ -35,8 +39,6 @@ button { padding:8px 12px; border:none; border-radius:12px; cursor:pointer; marg
 #message-buttons { display:flex; gap:5px; flex-shrink:0; }
 
 /* REACTIONS & POLLS */
-.reactions { display:flex; gap:5px; position:absolute; bottom:-20px; right:5px; }
-.emoji-btn { cursor:pointer; font-size:16px; }
 .poll { background:#fff0f5; padding:8px; border-radius:10px; margin:5px 0; }
 
 /* AVATARS & STATUS */
@@ -175,10 +177,37 @@ auth.onAuthStateChanged(async user=>{
 });
 
 // ---------- GROUPS ----------
-createGroupBtn.onclick=async()=>{ const name=newGroupInput.value.trim(); if(!name) return; await db.collection("groups").add({name,members:[currentUser.uid]}); newGroupInput.value=""; loadGroups(); };
-function loadGroups(){ db.collection("groups").onSnapshot(snap=>{ groupsDiv.innerHTML=""; snap.forEach(doc=>{ const data=doc.data(); const div=document.createElement("div"); div.textContent=data.name; div.style.cursor="pointer"; div.onclick=()=>{ selectGroup(doc.id,data.name); }; groupsDiv.appendChild(div); }); }); }
+createGroupBtn.onclick=async()=>{
+  const name=newGroupInput.value.trim();
+  if(!name) return;
+  await db.collection("groups").add({name,members:[currentUser.uid]});
+  newGroupInput.value="";
+};
 
-function selectGroup(groupId,groupName){ currentGroupId=groupId; chatBox.innerHTML=""; loadMessages(); loadPolls(); loadTypingIndicators(); }
+function loadGroups(){
+  db.collection("groups").onSnapshot(snap=>{
+    groupsDiv.innerHTML="";
+    snap.forEach(doc=>{
+      const data=doc.data();
+      const div=document.createElement("div");
+      div.textContent=data.name;
+      div.classList.add("group-item");
+      if(currentGroupId===doc.id) div.classList.add("active");
+      div.onclick=()=>{ selectGroup(doc.id, data.name); };
+      groupsDiv.appendChild(div);
+    });
+  });
+}
+
+function selectGroup(groupId,name){
+  currentGroupId=groupId;
+  // highlight selected group
+  Array.from(groupsDiv.children).forEach(div=>div.classList.remove("active"));
+  const selected = Array.from(groupsDiv.children).find(d=>d.textContent===name);
+  if(selected) selected.classList.add("active");
+  chatBox.innerHTML="";
+  loadMessages();
+}
 
 // ---------- MESSAGES ----------
 sendBtn.onclick=async()=>{
@@ -186,26 +215,79 @@ sendBtn.onclick=async()=>{
   const text=messageInput.value.trim();
   if(!text && !messageFile.files[0]) return;
   let fileUrl="";
-  if(messageFile.files[0]){ const file=messageFile.files[0]; const ref=storage.ref("messages/"+Date.now()+"_"+file.name); await ref.put(file); fileUrl=await ref.getDownloadURL(); }
+  if(messageFile.files[0]){
+    const file=messageFile.files[0];
+    const ref=storage.ref("messages/"+Date.now()+"_"+file.name);
+    await ref.put(file);
+    fileUrl=await ref.getDownloadURL();
+  }
   const userDoc=await db.collection("users").doc(currentUser.uid).get();
-  db.collection("messages").doc(currentGroupId).collection("msgs").add({ senderId:currentUser.uid, username:userDoc.data().username, avatarUrl:userDoc.data().avatarUrl, text, fileUrl, timestamp:Date.now() });
-  messageInput.value=""; messageFile.value="";
-  stopTyping();
+  await db.collection("messages").doc(currentGroupId).collection("msgs").add({
+    senderId:currentUser.uid,
+    username:userDoc.data().username,
+    avatarUrl:userDoc.data().avatarUrl,
+    text,
+    fileUrl,
+    timestamp:Date.now()
+  });
+  messageInput.value="";
+  messageFile.value="";
 };
+
+function loadMessages(){
+  if(!currentGroupId) return;
+  db.collection("messages").doc(currentGroupId).collection("msgs")
+    .orderBy("timestamp")
+    .onSnapshot(snapshot=>{
+      chatBox.innerHTML="";
+      snapshot.forEach(doc=>{
+        const data=doc.data();
+        const p=document.createElement("p");
+        p.textContent=`${data.username}: ${data.text||""}`;
+        p.className = (data.senderId===currentUser.uid)?"self":"other";
+        if(data.fileUrl){
+          const a=document.createElement("a");
+          a.href=data.fileUrl;
+          a.textContent="[File]";
+          a.target="_blank";
+          p.appendChild(document.createElement("br"));
+          p.appendChild(a);
+        }
+        chatBox.appendChild(p);
+      });
+      chatBox.scrollTop=chatBox.scrollHeight;
+    });
+}
 
 // ---------- TYPING INDICATORS ----------
 messageInput.addEventListener("input",()=>{
   if(!currentGroupId || !currentUser) return;
-  db.collection("typing").doc(currentGroupId).collection("users").doc(currentUser.uid).set({isTyping:true,timestamp:Date.now()});
+  db.collection("typing").doc(currentGroupId).collection("users").doc(currentUser.uid)
+    .set({isTyping:true,timestamp:Date.now()});
   clearTimeout(typingTimeout);
   typingTimeout=setTimeout(stopTyping,2000);
 });
 
-function stopTyping(){ if(!currentGroupId || !currentUser) return; db.collection("typing").doc(currentGroupId).collection("users").doc(currentUser.uid).set({isTyping:false,timestamp:Date.now()}); }
-function loadTypingIndicators(){ if(!currentGroupId) return; db.collection("typing").doc(currentGroupId).collection("users").onSnapshot(snapshot=>{ let names=[]; snapshot.forEach(doc=>{ const data=doc.data(); if(data.isTyping && doc.id!==currentUser.uid) names.push(doc.id); }); typingDiv.textContent=names.length>0?`Someone is typing...`:""; }); }
+function stopTyping(){
+  if(!currentGroupId || !currentUser) return;
+  db.collection("typing").doc(currentGroupId).collection("users").doc(currentUser.uid)
+    .set({isTyping:false,timestamp:Date.now()});
+}
+
+function loadTypingIndicators(){
+  if(!currentGroupId) return;
+  db.collection("typing").doc(currentGroupId).collection("users").onSnapshot(snapshot=>{
+    let names=[];
+    snapshot.forEach(doc=>{
+      const data=doc.data();
+      if(data.isTyping && doc.id!==currentUser.uid) names.push(doc.id);
+    });
+    typingDiv.textContent=names.length>0?"Someone is typing...":"";
+  });
+}
 
 // ---------- EMOJIS ----------
-emojiBtn.onclick=()=>{ messageInput.value+= "😀"; };
+emojiBtn.onclick=()=>{ messageInput.value+="😀"; };
 
 // ---------- POLLS ----------
 createPollBtn.onclick=()=>{
@@ -214,24 +296,25 @@ createPollBtn.onclick=()=>{
   const options=prompt("Enter options separated by comma:").split(",");
   if(!question||options.length<2) return alert("Need question and 2+ options");
   db.collection("polls").doc(currentGroupId).collection("pollList").add({question,options,votes:{}});
-  loadPolls();
 };
 
 function loadPolls(){
+  if(!currentGroupId) return;
   db.collection("polls").doc(currentGroupId).collection("pollList")
-    .onSnapshot(snap=>{ snap.forEach(doc=>{
-      const poll=doc.data();
-      const div=document.createElement("div"); div.classList.add("poll");
-      div.innerHTML=`<b>${poll.question}</b>`;
-      poll.options.forEach((opt,i)=>{
-        const btn=document.createElement("button");
-        btn.textContent=opt;
-        btn.onclick=()=>votePoll(doc.id,i);
-        div.appendChild(btn);
+    .onSnapshot(snap=>{
+      snap.forEach(doc=>{
+        const poll=doc.data();
+        const div=document.createElement("div"); div.classList.add("poll");
+        div.innerHTML=`<b>${poll.question}</b>`;
+        poll.options.forEach((opt,i)=>{
+          const btn=document.createElement("button");
+          btn.textContent=opt;
+          btn.onclick=()=>votePoll(doc.id,i);
+          div.appendChild(btn);
+        });
+        chatBox.appendChild(div);
       });
-      chatBox.appendChild(div);
-      chatBox.scrollTop=chatBox.scrollHeight;
-    }); });
+    });
 }
 
 async function votePoll(pollId,optIndex){
